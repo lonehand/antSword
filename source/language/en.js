@@ -28,7 +28,8 @@ module.exports = {
       cut: 'Cut',
       copy: 'Copy',
       paste: 'Paste',
-      selectall: 'SelectAll'
+      selectall: 'SelectAll',
+      search: 'Search'
     },
     window: {
       title: 'Window',
@@ -60,6 +61,7 @@ module.exports = {
       edit: 'Edit',
       delete: 'Delete',
       move: 'Move',
+      copy: 'Copy',
       search: 'Search',
       plugin: 'Plugins',
       pluginDefault: 'Default',
@@ -95,6 +97,7 @@ module.exports = {
     },
     list: {
       title: 'Shell Lists',
+      not_recommended: 'Not recommended',
       grid: {
         url: 'URL',
         ip: 'IP',
@@ -106,6 +109,7 @@ module.exports = {
       add: {
         title: 'Add shell',
         toolbar: {
+          test: 'Test Connection',
           add: 'Add',
           clear: 'Clear'
         },
@@ -117,6 +121,8 @@ module.exports = {
           type: 'Shell type',
           encoder: 'Encoder'
         },
+        test_success: 'Connection Successful!',
+        test_warning: 'Response is null!',
         warning: 'Please enter the full!',
         success: 'Add shell success!',
         error: (err) => antSword.noxss(`Add shell failed!\n${err}`)
@@ -168,8 +174,17 @@ module.exports = {
       },
       otherConf: {
         nohttps: 'Ignore HTTPS certificate',
+        usemultipart: 'Use Multipart send payload',
+        chunk: {
+          title: 'Chunked Transfer (Experimentally)',
+          usechunk: 'Use Chunked send payload.',
+          min: 'Min Block',
+          max: 'Max Block',
+          exphint: 'This feature is currently experimental and cannot be used with Multipart. Some types of servers may not support Chunked transfers. In addition, it is recommended to set the timeout period to 30s or more to avoid data transmission when the network speed is not good.',
+        },
         terminalCache: "Use the terminal's cache",
         filemanagerCache: "Use the filemanager's cache",
+        uploadFragment: "Upload File Fragmentation Size",
         requestTimeout: 'Request timeout',
         commandPath: 'Custom terminal-execPath'
       }
@@ -183,7 +198,38 @@ module.exports = {
       system: 'System  Info',
       user: 'Current User',
       path: 'Current Path'
-    }
+    },
+    ascmd: {
+      help: 'Enter ashelp to view local commands',
+      ashelp: `Usage:
+ ascmd [file]\t\tExecute the command with file, eg: ascmd /bin/bash
+ aslistcmd\t\tList available command interpreters
+ aspowershell [on|off]\t\tEnable/Disable PowerShell mode, eg: aspowershell on
+ quit\t\tClose terminal
+ exit\t\tClose terminal
+
+Hot Keys:
+ Ctrl =\t\tIncrease font
+ Ctrl -\t\tDecrease font
+ Ctrl L\t\tClean screen
+ Ctrl U\t\tClear the current line
+ Ctrl A\t\tMove cursor to the beginning of the line
+ Ctrl E\t\tMove cursor to the end of the line
+ Ctrl F/B\t\tForward and backward (equivalent to the left and right direction keys)
+ Ctrl P\t\tPrevious command
+ Ctrl R\t\tSearch command history
+ Ctrl D\t\tDelete the character of the current cursor
+ Ctrl H\t\tDeletes the character before the cursor
+ Ctrl W\t\tDelete the word before the cursor
+ Ctrl K\t\tDelete to the end of the text
+ Ctrl T\t\tExchange text at the cursor
+ `,
+      ascmd: (cmd) => antSword.noxss(`Will execute the command with ${cmd}.`),
+      aspowershell: {
+        on: "Powershell mode enabled",
+        off: "Powershell mode disabled",
+      },
+    },
   },
   filemanager: {
     title: 'FileManager',
@@ -219,6 +265,12 @@ module.exports = {
       success: (path) => antSword.noxss(`Retime file success!\n${path}`),
       error: (path, err) => antSword.noxss(`Retime file [${path}] failed!${err ? '\n' + err : ''}`)
     },
+    chmod: {
+      title: 'Chmod File',
+      check: 'Input should be octal numbers, eg: 0644',
+      success: (path) => antSword.noxss(`Chmod file success!\n${path}`),
+      error: (path, err) => antSword.noxss(`Chmod file [${path}] failed!${err ? '\n' + err : ''}`)
+    },
     wget: {
       title: 'Wget File',
       check: 'URL is not correct!',
@@ -234,6 +286,9 @@ module.exports = {
       task: {
         name: 'Upload',
         success: 'Upload success!',
+        httperr_413: 'Please lower the upload file shard size setting.',
+        httperr_etime: 'Request timeout, please increase the timeout period.',
+        httperr_econnrefused: 'Connection refused, check target or proxy is enabled.',
         failed: (err) => antSword.noxss(`Failed:${err}`),
         error: (err) => antSword.noxss(`Error:${err}`)
       },
@@ -295,7 +350,11 @@ module.exports = {
             }
           },
           preview: 'Preview',
-          edit: 'Edit',
+          edit: {
+            title: 'Edit',
+            openwindow: 'Open in Window',
+            opentab: 'Open in Tab',
+          },
           delete: 'Delete',
           rename: 'Rename',
           refresh: 'Refresh',
@@ -303,8 +362,13 @@ module.exports = {
           upload: 'Upload',
           download: 'Download',
           modify: 'Modify the file time',
+          chmod: 'Chmod',
           copy: {
             title: 'Copy',
+            copyname: 'Copy FileName',
+            copypath: 'Copy FilePath',
+            copysuccess: 'Copy to clipboard successfully!',
+            copyfail: 'Copy to clipboard failed!',
             warning: (id) => antSword.noxss(`Already add to clipboard!\n${id}`),
             info: (id) => antSword.noxss(`Add file to the clipboard.\n${id}`)
           },
@@ -312,7 +376,8 @@ module.exports = {
             title: 'Create',
             folder: 'Folder',
             file: 'File'
-          }
+          },
+          terminal: 'Open Terminal Here'
         }
       }
     },
@@ -321,7 +386,7 @@ module.exports = {
       toolbar: {
         save: 'Save',
         mode: 'Mode',
-        encode: 'Encode'
+        encode: 'Open with Encoding'
       },
       loadErr: (err) => antSword.noxss(`Load file error!\n${err}`),
       success: (path) => antSword.noxss(`Save the file success!\n${path}`),
@@ -359,10 +424,22 @@ module.exports = {
       add: 'Add',
       del: 'Del',
       edit: 'Edit',
+      check: 'Check',
       menu: {
         add: 'Add conf',
         del: 'Del conf',
-        edit: 'Edit conf'
+        edit: 'Edit conf',
+        adddb: 'New Database',
+        editdb: 'Edit Database',
+        deldb: 'Del Database',
+        addtable: 'New Table',
+        edittable: 'Edit TableName',
+        desctable: 'Desc Table',
+        showcreatetable: 'Create Table SQL',
+        deltable: 'Del Table',
+        addcolumn: 'New Column',
+        editcolumn: 'Edit ColumnName',
+        delcolumn: 'Del Column',
       }
     },
     query: {
@@ -380,14 +457,20 @@ module.exports = {
         query: (err) => antSword.noxss(`Failure to execute SQL!\n${err}`),
         parse: 'Return data format is incorrect!',
         noresult: 'No query results!'
+      },
+      dump: {
+        title: "Export Data",
+        success: "Export success",
       }
     },
+    notsupport: 'Not support the current database type',
     form: {
       title: 'Add conf',
       toolbar: {
         add: 'Add',
         clear: 'Clear',
-        edit: 'Edit'
+        edit: 'Edit',
+        test: 'Test connect'
       },
       conn: 'Connection String',
       type: 'Database type',
@@ -397,12 +480,88 @@ module.exports = {
       passwd: 'Password',
       warning: 'Please fill in the complete!',
       success: 'Successful add configuration!',
+      test_success: 'Connection Successful!',
+      test_warning: 'Response is null!',
       del: {
         title: 'Delete configuration',
         confirm: 'Determine delete this configuration?',
         success: 'Delete configuration success!',
         error: (err) => antSword.noxss(`Delete configuration failed!\n${err}`)
+      },
+      adddb: {
+        title: 'New Database',
+        dbname: 'Name',
+        characterset: 'Character Set',
+        charactercollation: 'Collation',
+        createbtn: 'OK',
+        cancelbtn: 'Cancel',
+        success: 'Create database successfully',
+        error: 'Failed to create database',
+      },
+      editdb: {
+        title: 'Database Properties',
+        dbname: 'Name(readonly)',
+        characterset: 'Character Set',
+        charactercollation: 'Collation',
+        updatebtn: 'OK',
+        cancelbtn: 'Cancel',
+        success: 'Edit database successfully',
+        error: 'Failed to edit database',
+      },
+      deldb: {
+        title: 'Delete Database',
+        confirm: (name) => antSword.noxss(`Are you sure you want to delete database ${name} ?`),
+        success: 'Delete database successfully',
+        error: 'Failed to delete database',
+      },
+      addtable: {
+        title: 'New Table',
+        add: 'New Column',
+        delete: 'Delete Column',
+        save: 'Save',
+        gridheader: "Name,Type,Length,Not Null,Key,Auto Increment",
+        delete_not_select: "Please select the row you want to delete first",
+        save_row_is_null: "The number of rows is empty",
+        cell_valid_error: (i,j)=>`Data format validation failed(row ${i+1}, col ${j+1})`,
+        confirmtitle: "New table name",
+        invalid_tablename: "Table names should not contain special symbols",
+        success: 'Create table successfully',
+        error: 'Failed to create table',
+      },
+      edittable: {
+        title: "New table name",
+        invalid_tablename: "Table names should not contain special symbols",
+        success: 'Update table name successfully',
+        error: 'Failed to update table',
+      },
+      deltable: {
+        title:'Delete Table',
+        confirm: (name) => antSword.noxss(`Are you sure you want to delete table ${name}?`),
+        success: 'Delete table successfully',
+        error: 'Failed to delete table',
+      },
+      addcolumn: {
+
+      },
+      editcolumn: {
+        title: "New column name",
+        invalid_tablename: "Column names should not contain special symbols",
+        get_column_type_error: "Get column type error",
+        success: 'Update column name successfully',
+        error: 'Failed to update column',
+      },
+      delcolumn: {
+        title:'Delete Column',
+        confirm: (name) => antSword.noxss(`Are you sure you want to delete column ${name}?`),
+        success: 'Delete column successfully',
+        error: 'Failed to delete column',
       }
+    },
+    probedb: {
+      title: 'Detect database function support',
+      success: 'Check completed',
+      coltype: 'ConnType',
+      issupport: 'Support',
     }
   },
   settings: {
@@ -411,7 +570,9 @@ module.exports = {
       header: 'AntSword',
       homepage: 'Home',
       document: 'Document',
-      qqgroup: 'QQ Group'
+      qqgroup: 'QQ Group',
+      discord: 'Discord',
+      wechat: 'Fllow us on WeChat'
     },
     language: {
       title: 'Language setting',
@@ -454,8 +615,10 @@ module.exports = {
         }
       },
       message: {
+        githint: (workdir)=>`The current source is Git management, please close the program and go to ${workdir} to manually update`,
         prepare: "Connecte to server...",
         dling: (progress)=> `Downloading...${progress}%`,
+        dlingnp: (size)=> `Downloading...${size}`,
         dlend: "Download completed",
         extract: "Unpacking, don't close AntSword",
         ing: 'Downloading..',
@@ -557,6 +720,55 @@ module.exports = {
           }
         }
       }
+    },
+    adefault: {
+      title: 'Default Setting',
+      success: 'Save default settings successfully!',
+      error: 'Failed to save the default settings!',
+      confirm: {
+        content: 'Restart the application to take effect, whether to restart?',
+        title: 'Change default settings'
+      },
+      toolbar: {
+        save: 'Save',
+      },
+      filemanager: {
+        title: 'FileManager',
+        openfileintab: {
+          title: 'Open File in',
+          window: 'Window',
+          tab: 'Tab',
+        },
+        bookmark: {
+          title: 'Global Bookmark',
+          nodata: 'No data, click the right mouse button add',
+          grid: {
+            name: 'Name',
+            path: 'Path'
+          },
+          bmenu: {
+            add: 'Add Bookmark',
+            del: 'Del Bookmark'
+          },
+          add: {
+            title: 'Add to global bookmark',
+            success: 'Add success',
+            namedup: 'The name cannot be duplicated',
+            name_invalid: 'Name is invalid',
+            addbtn: 'Confirm'
+          },
+          del: {
+            title: 'Delete Bookmark',
+            confirm: (num) => antSword.noxss(`Are you sure to delete ${typeof(num) === 'number' ? num + ' Bookmarks' : num+" "}？`),
+            success: 'Delete success'
+          },
+          edit: {
+            namedup: 'The name cannot be duplicated',
+            name_invalid: 'Name is invalid',
+            success: 'Edit success'
+          }
+        },
+      }
     }
   },
   plugin: {
@@ -569,6 +781,7 @@ module.exports = {
   },
   viewsite: {
     toolbar: {
+      useproxy: (s) => `Proxy: ${s?'ON':'OFF'}`,
       save: 'Save',
       view: 'View'
     },

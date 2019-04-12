@@ -9,7 +9,7 @@ const LANG_T = antSword['language']['toastr'];
 
 class Terminal {
 
-  constructor(opts) {
+  constructor(opts, options={}) {
     // 生存一个随机ID，用于标识多个窗口dom
     const hash = String(Math.random()).substr(2, 10);
 
@@ -29,16 +29,20 @@ class Terminal {
     cell.attachHTMLString(`
       <div
         id="div_terminal_${hash}"
-        style="height:100%;margin:0;padding:0 5px 1px 5px;overflow:scroll"
+        style="height:100%;margin:0;padding:0 5px 1px 5px;overflow:scroll;--size:1;"
       ></div>
     `);
 
     this.path = '';
     this.opts = opts;
+    this.options = options || {};
     this.hash = hash;
     this.term = null;
     this.cell = cell;
     this.isWin = true;
+    this.isPowershell = false;
+    this.sessbin = null;
+    this.sess_powershell = null;
     this.core = new antSword['core'][opts['type']](opts);
     this.cache = new antSword['CacheManager'](this.opts['_id']);
 
@@ -46,6 +50,12 @@ class Terminal {
       .getInformation()
       .then((ret) => {
         this.initTerminal(ret['info'], ret['dom']);
+        if(this.options.hasOwnProperty("path")) {
+          if(this.isWin && this.path.substr(0,1).toUpperCase() != this.options.path.substr(0,1).toUpperCase()) {
+            this.term.exec(`${this.options.path.substr(0,1).toUpperCase()}:`);
+          }
+          this.term.exec(`cd ${this.options.path}`);
+        }
       })
       .catch((err) => {
         toastr.error((typeof(err) === 'object') ? JSON.stringify(err) : String(err), LANG_T['error']);
@@ -95,6 +105,7 @@ class Terminal {
    * @return {None}     [description]
    */
   initTerminal(ret, dom) {
+    let self = this;
     let info = ret.split('\t');
     let infoUser, infoPath, infoDrive, infoSystem;
     let banner = `[[b;cyan;](*) ${LANG['banner']['title']}]`;
@@ -136,6 +147,80 @@ class Terminal {
       if (cmd === 'exit' || cmd === 'quit') { return this.cell.close() }
       // clear清空
       if (cmd === 'cls' || cmd === 'clear') { return term.clear() }
+      
+      if (cmd === 'ashelp'){
+        term.echo(LANG['ascmd']['ashelp']);
+        return;
+      }
+      if (cmd === 'aslistcmd'){
+        var binarr = "";
+        if (this.isWin) {
+          binarr = [
+            "C:/Windows/System32/cmd.exe",
+            "C:/Windows/SysWOW64/cmd.exe",
+            "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe",
+            "C:/Windows/SysWOW64/WindowsPowerShell/v1.0/powershell.exe",
+            "C:/Windows/System32/WindowsPowerShell/v2.0/powershell.exe",
+            "C:/Windows/SysWOW64/WindowsPowerShell/v2.0/powershell.exe",
+            "C:/Windows/System32/WindowsPowerShell/v3.0/powershell.exe",
+            "C:/Windows/SysWOW64/WindowsPowerShell/v3.0/powershell.exe",
+            "C:/Windows/System32/WindowsPowerShell/v4.0/powershell.exe",
+            "C:/Windows/SysWOW64/WindowsPowerShell/v4.0/powershell.exe",
+          ].join(',');
+        }else{
+          binarr = [
+            "/bin/sh",
+            "/bin/ash",
+            "/bin/bash",
+            "/bin/zsh",
+            "/bin/busybox",
+          ].join(',');
+        }
+        this.core.request(
+          this.core.command.listcmd({
+            binarr: binarr,
+          })
+        ).then((ret) => {
+          let res = ret['text'];
+          if(res.indexOf("ERROR://") > -1){
+            throw res;
+          }
+          let result = "";
+          res.split('\n').map((v) => {
+            var line = v.split('\t');
+            if(line.length == 2){
+              var r = parseInt(line[1]) === 1 ? '[[b;#15af63;]OK]' : '[[b;#E80000;]FAIL]';
+              result += `${line[0]}\t\t\t${r}\n`;
+            }
+          });
+          term.echo(result);
+          term.resume();
+        }).catch((err) => {
+          term.resume();
+        });
+        return;
+      }
+      if ( cmd.substr(0,5) === 'ascmd') {
+        var sessbin = cmd.substr(5).trim();
+        if(sessbin.length>0){
+          self.sessbin = sessbin;
+          term.echo(LANG['ascmd']['ascmd'](self.sessbin));
+        }else{
+          term.echo(LANG['ascmd']['ashelp']);
+        }
+        return;
+      }
+      if ( cmd.substr(0,12) === 'aspowershell') {
+        var _switch = cmd.substr(12).trim().toLowerCase();
+        if(_switch === "on") {
+          self.sess_powershell = true;
+          term.echo(LANG['ascmd']['aspowershell']["on"]);
+        }else {
+          self.sess_powershell = false;
+          term.echo(LANG['ascmd']['aspowershell']["off"]);
+        }
+        return;
+      }
       term.pause();
       // 是否有缓存
       let cacheTag = 'command-' + new Buffer(this.path + cmd).toString('base64');
@@ -152,6 +237,17 @@ class Terminal {
       let _bin = this.isWin ? 'cmd' : '/bin/sh';
       let _confBin = (this.opts['otherConf'] || {})['command-path'];
       _bin = _confBin || _bin;
+      if(self.sessbin !== null) {
+        _bin = self.sessbin;
+      }
+      if(self.isWin && _bin.indexOf("powershell") > -1) {
+        self.isPowershell = true
+      }else{
+        self.isPowershell = false
+      }
+      if(self.sess_powershell !== null) {
+        self.isPowershell = self.sess_powershell;
+      }
       // 开始执行命令
       this.core.request(
         this.core.command.exec({
@@ -202,7 +298,9 @@ class Terminal {
         exit: false,
         // < 1.0.0 时使用3个参数 completion: (term, value, callback) => {}
         completion: (value, callback) => {
-          callback(
+          callback([
+            'ashelp', 'ascmd', 'aslistcmd', 'aspowershell', 'quit', 'exit'
+          ].concat(
             this.isWin ? [
               'dir', 'whoami', 'net', 'ipconfig', 'netstat', 'cls',
               'wscript', 'nslookup', 'copy', 'del', 'ren', 'md', 'type',
@@ -213,9 +311,39 @@ class Terminal {
               'whoami', 'ifconfig', 'clear',
               'ping'
             ]
-          )
+          ))
+        },
+        keydown: (event, terminal) => {
+          if(event.ctrlKey == true) {
+            // ctrl 键按下
+            switch(event.keyCode) {
+              case 187: // 放大 ctrl +
+                var s = parseFloat(terminal[0].style.getPropertyValue("--size"));
+                if(isNaN(s)){
+                  s = 1;
+                }
+                if(s<5){
+                  s += 0.05;
+                }
+                terminal[0].style.setProperty("--size", s);
+                return false;
+              case 189: // 缩小 ctrl -
+                var s = parseFloat(terminal[0].style.getPropertyValue("--size"));
+                if(isNaN(s)){
+                  s = 1;
+                }
+                if(s>0.5){
+                  s -= 0.05;
+                }
+                terminal[0].style.setProperty("--size", s);
+                return false;
+              default:
+              break;
+            }
+          }
         }
     });
+    this.term.echo(`[[b;cyan;](*) ${LANG['ascmd']['help']}]`);
   }
 
   /**
@@ -227,7 +355,7 @@ class Terminal {
   parseCmd(cmd, path) {
     path = path.replace(/\\\\/g, '\\').replace(/"/g, '\\"').replace(/\\/g, '\\\\');
     return (this.isWin
-      ? `cd /d "${path}"&${cmd}&echo [S]&cd&echo [E]`
+      ? this.isPowershell? `cd "${path}";${cmd};echo [S];(pwd).path;echo [E]`:`cd /d "${path}"&${cmd}&echo [S]&cd&echo [E]`
       : `cd "${path}";${cmd};echo [S];pwd;echo [E]`
     );
   }

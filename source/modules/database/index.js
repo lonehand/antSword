@@ -1,12 +1,13 @@
 //
 // 数据库管理模块
 //
-
+// TODO: 数据管理模块目前的代码存在大量冗余，后期会考虑将 数据库驱动 与 core 分成两个块来做
 // import React from 'react';
 // import ReactDOM from 'react-dom';
 // import AceEditor from 'react-ace';
 
 const LANG = antSword['language']['database'];
+const LANG_T = antSword['language']['toastr'];
 
 class Database {
 
@@ -47,7 +48,7 @@ class Database {
   // 初始化左侧列表
   initList(layout) {
     layout.setText(`<i class="fa fa-server"></i> ${LANG['list']['title']}`);
-    layout.setWidth('250');
+    layout.setWidth('270');
 
     // tree图标
     const imgs = [
@@ -68,7 +69,9 @@ class Database {
       { type: 'separator' },
       { id: 'edit', text: LANG['list']['edit'], icon: 'edit', type: 'button', disabled: true },
       { type: 'separator' },
-      { id: 'del', text: LANG['list']['del'], icon: 'trash-o', type: 'button', disabled: true }
+      { id: 'del', text: LANG['list']['del'], icon: 'trash-o', type: 'button', disabled: true },
+      { type: 'separator' },
+      { id: 'check', text: LANG['list']['check'], icon: 'spinner', type: 'button' }
     ]);
     toolbar.attachEvent('onClick', (id) => {
       switch(id) {
@@ -80,6 +83,9 @@ class Database {
           break;
         case 'edit':
           this.drive.editConf();
+          break;
+        case 'check': // 探针检测支持的函数
+          this.checkprobe();
           break;
       }
     });
@@ -144,7 +150,7 @@ class Database {
       }
     });
 
-    editor.session.setValue('SELECT "Hello antSword :)" AS welcome;');
+    editor.session.setValue("SELECT 'Hello antSword :)' AS welcome;");
 
     return {
       editor: editor,
@@ -158,14 +164,21 @@ class Database {
     layout.setText(`<i class="fa fa-inbox"></i> ${LANG['result']['title']}`);
     // layout.hideHeader();
 
-    // const toolbar = layout.attachToolbar();
-    // toolbar.loadStruct([
-    //   { id: 'dump', text: '导出', icon: 'upload', type: 'button', disabled: true },
-    //   { type: 'separator' }
-    // ]);
+    const toolbar = layout.attachToolbar();
+    toolbar.loadStruct([
+      { id: 'dump', text: '导出', icon: 'upload', type: 'button', disabled: true },
+      { type: 'separator' }
+    ]);
+    toolbar.attachEvent('onClick', (id) => {
+      switch(id) {
+        case 'dump':
+          this.drive.dumpResult();
+          break;
+      }
+    });
     return {
       layout: layout,
-      // toolbar: toolbar
+      toolbar: toolbar
     };
   }
 
@@ -190,6 +203,70 @@ class Database {
     return _win;
   }
 
+  // 检测数据库函数支持
+  checkprobe() {
+    let that = this;
+    let win = that.createWin({
+      title: LANG['probedb']['title'],
+      width: 350,
+      height: 400,
+    });
+    const func_mapping = {
+      // PHP
+      'mysql_close': 'MYSQL',
+      'mysqli_close': 'MYSQLI',
+      'mssql_close': 'MSSQL',
+      'sqlsrv_close': 'SQLSRV',
+      'ora_close': 'ORACLE',
+      'oci_close': 'ORACLE_OCI8',
+      'ifx_close': 'INFORMIX',
+      'sqlite_close': 'SQLite',
+      'pg_close': 'PostgreSQL',
+      'dba_close': 'DBA',
+      'dbmclose': 'DBM',
+      'filepro_fieldcount': 'FilePro',
+      'sybase_close': 'SyBase',
+    }
+    let grid = win.attachGrid();
+    grid.clearAll();
+    grid.setHeader(`${LANG['probedb']['coltype']},${LANG['probedb']['issupport']}`);
+    grid.setColTypes("ro,ro");
+    grid.setColSorting('str,str');
+    grid.setColumnMinWidth(100, 50);
+    grid.setInitWidths("*");
+    grid.setEditable(false);
+    grid.init();
+    win.progressOn();
+    that.drive.core.request(
+      that.drive.core.base.probedb()
+    ).then((ret) => {
+      if(ret['text'].indexOf("ERROR://") > -1){
+        throw res["text"];
+      }
+      let _data = ret['text'].split('\n');
+      let data_arr = [];
+      for (let i = 0; i < _data.length; i ++) {
+        let item = _data[i].split('\t');
+        if(item.length<2){continue;}
+        data_arr.push({
+          id: i+1,
+          data: [
+            func_mapping.hasOwnProperty(item[0]) ? func_mapping[item[0]] : item[0],
+            parseInt(item[1]) === 1 ? "√" : "×",
+          ],
+          style: parseInt(item[1]) === 1 ? "background-color:#ADF1B9": "",
+        });
+      }
+      grid.parse({
+        'rows': data_arr
+      }, 'json');
+      toastr.success(LANG['probedb']['success'], LANG_T['success']);
+      win.progressOff();
+    }).catch((err)=>{
+      win.progressOff();
+      toastr.error(JSON.stringify(err), LANG_T['error']);
+    });
+  }
 }
 
 // export default Database;

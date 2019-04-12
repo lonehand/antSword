@@ -16,6 +16,7 @@ const fs = require('fs'),
 
 const Menubar = require('./base/menubar');
 const CacheManager = require('./base/cachemanager');
+const Decodes = require('./base/decodes');
 
 const antSword = window.antSword = {
   /**
@@ -73,7 +74,7 @@ const antSword = window.antSword = {
     if (!value) {
       return localStorage.getItem(key) || def;
     };
-    if (typeof(x) === "object")
+    if (typeof(value) === "object")
       value = JSON.stringify(value);
     // 设置
     localStorage.setItem(key, value);
@@ -128,7 +129,7 @@ antSword['language'] = require('./language/');
 antSword['encoders'] = (function(){
   var encoders = {asp:[],aspx:[],php:[],custom:[]};
   var encoders_path = {asp:[],aspx:[],php:[],custom:[]};
-  let userencoder_path = path.join(process.env.AS_WORKDIR,'antData/encoders');
+  let userencoder_path = path.join(remote.process.env.AS_WORKDIR,'antData/encoders');
   // 初始化
   !fs.existsSync(userencoder_path) ? fs.mkdirSync(userencoder_path) : null;
   ['asp','aspx','php','custom'].map((t)=>{
@@ -189,7 +190,7 @@ antSword['aproxyauth'] = (
   !aproxy['username'] || !aproxy['password']
 ) ? '' : `${aproxy['username']}:${aproxy['password']}`;
 
-antSword['aproxyuri'] = `${aproxy['protocol']}:\/\/${antSword['aproxyauth']}@${aproxy['server']}:${aproxy['port']}`;
+antSword['aproxyuri'] = `${aproxy['protocol']}:\/\/${antSword['aproxyauth']}${antSword['aproxyauth']===""?"":"@"}${aproxy['server']}:${aproxy['port']}`;
 
 // 通知后端设置代理
 ipcRenderer.send('aproxy', {
@@ -201,6 +202,7 @@ antSword['shell'] = shell;
 antSword['remote'] = remote;
 antSword['ipcRenderer'] = ipcRenderer;
 antSword['CacheManager'] = CacheManager;
+antSword['Decodes'] = new Decodes();
 antSword['menubar'] = new Menubar();
 antSword['package'] = require('../package');
 
@@ -264,6 +266,14 @@ ipcRenderer
     let n = new Notification(antSword['language']['update']['title'], {
       body: antSword['language']['update']['body'](opt['ver'])
     });
+    // 文件大小计算
+    const getFileSize = (t) => {
+      let i = false;
+      let b = ["b","Kb","Mb","Gb","Tb","Pb","Eb"];
+      for (let q=0; q<b.length; q++) if (t > 1024) t = t / 1024; else if (i === false) i = q;
+      if (i === false) i = b.length-1;
+      return Math.round(t*100)/100+" "+b[i];
+    }
     n.addEventListener('click', () => {
       antSword.shell.openExternal(opt['url']);
     });
@@ -300,6 +310,12 @@ ipcRenderer
     form.attachEvent("onButtonClick", (name)=>{
       switch (name) {
         case "updatebtn":
+          var workdir = antSword.remote.process.env.AS_WORKDIR;
+          if(fs.existsSync(path.join(workdir, ".git/"))){
+            win.close();
+            layer.alert(LANG["message"]["githint"](workdir));
+            return
+          }
           const hash = (String(+new Date) + String(Math.random())).substr(10, 10).replace('.', '_');
           //折叠
           win.win.park();
@@ -307,8 +323,12 @@ ipcRenderer
           win.win.progressOn();
           win.setTitle(LANG["message"]["prepare"]);
           antSword['ipcRenderer']
-            .on(`update-dlprogress-${hash}`, (event, progress)=>{
-              win.setTitle(LANG["message"]["dling"](progress));
+            .on(`update-dlprogress-${hash}`, (event, progress, isprogress)=>{
+              if(isprogress==true){
+                win.setTitle(LANG["message"]["dling"](progress));
+              }else{
+                win.setTitle(LANG["message"]["dlingnp"](getFileSize(progress)));
+              }
             })
             .once(`update-dlend-${hash}`,(event)=>{
               win.setTitle(LANG["message"]["dlend"]);
@@ -316,9 +336,9 @@ ipcRenderer
               toastr.success(antSword["language"]["success"], LANG["message"]["extract"]);
             })
             .once(`update-error-${hash}`, (event, err)=>{
-              toastr.error(antSword["language"]['error'], LANG["message"]["fail"](err));
               win.win.progressOff();
               win.close();
+              toastr.error(antSword["language"]['error'], LANG["message"]["fail"](err));
             });
           break;
         case "canclebtn":
@@ -364,8 +384,15 @@ ipcRenderer
   });
 
 antSword.reloadPlug();
-// 检查更新
-setTimeout(
-  antSword.ipcRenderer.send.bind(antSword.ipcRenderer, 'check-update'),
-  1000 * 60
-);
+antSword['menubar'].reg('check-update', ()=>{
+  antSword.ipcRenderer.send('check-update');
+});
+
+if(new Date() - new Date(antSword['storage']('lastautocheck', false, "0")) >= 86400000) {
+  // 检查更新
+  antSword['storage']('lastautocheck', new Date().getTime());
+  setTimeout(
+    antSword.ipcRenderer.send.bind(antSword.ipcRenderer, 'check-update'),
+    1000 * 60
+  );
+}

@@ -24,7 +24,7 @@ class ViewSite {
 
     this.opts = opts;
     this.cell = tabbar.cells(`tab_viewsite_${hash}`);
-
+    this.useproxy = antSword.aproxymode !== "noproxy";
     // 初始化工具栏
     this.toolbar = this._initToolbar();
 
@@ -41,7 +41,7 @@ class ViewSite {
     }, 1000);
 
     // 打开浏览窗口
-    this._loadURL(opts.url);
+    // this._loadURL(opts.url);
   }
 
   /**
@@ -51,19 +51,40 @@ class ViewSite {
   _initToolbar() {
     const toolbar = this.cell.attachToolbar();
     toolbar.loadStruct([
-      { id: 'save', type: 'button', icon: 'save', text: LANG['toolbar'].save },
+      { id: 'url', width: 400, type: 'buttonInput', value: this.opts.url || 'loading..' },
+      { type: 'separator' },
+      { id: 'useproxy', type: 'buttonTwoState', icon: 'paper-plane', text: LANG['toolbar'].useproxy(this.useproxy), pressed: this.useproxy, disabled: antSword.aproxymode === "noproxy"},
       { type: 'separator' },
       { id: 'view', type: 'button', icon: 'chrome', text: LANG['toolbar'].view },
+      { type: 'separator' },
+      { id: 'save', type: 'button', icon: 'save', text: LANG['toolbar'].save },
     ]);
+    toolbar.attachEvent('onStateChange', (id, state) => {
+      switch(id) {
+        case 'useproxy':
+          this.useproxy = state;
+          toolbar.setItemText('useproxy', `<i class="fa fa-paper-plane"></i> ${LANG['toolbar'].useproxy(this.useproxy)}`);
+        break;
+      }
+    });
     toolbar.attachEvent('onClick', (id) => {
       switch(id) {
         case 'save':
           this._saveCookie();
           break;
         case 'view':
-          this._loadURL(this.opts.url);
+          let url = toolbar.getInput('url').value;
+          this._loadURL(url);
       }
-    })
+    });
+    toolbar.attachEvent('onEnter', (id, value) => {
+      switch(id) {
+        case 'url':
+          let url = toolbar.getInput('url').value;
+          this._loadURL(url);
+          break;
+      }
+    });
     return toolbar;
   }
 
@@ -159,11 +180,21 @@ class ViewSite {
       webPreferences: {
         nodeIntegration: false,
       },
-      title: this.opts.url
+      title: url
     });
-    win.loadURL(url);
-    win.show();
-    win.openDevTools();
+    win.on('close', () => {
+      win = null;
+    });
+    let ses = win.webContents.session;
+    let proxyuri = "";
+    if(this.useproxy && antSword.aproxymode != "noproxy") {
+      proxyuri = antSword.aproxyuri;
+    }
+    ses.setProxy({proxyRules: proxyuri}, ()=>{
+      win.loadURL(url);
+      win.show();
+      win.openDevTools();
+    });
   }
 }
 

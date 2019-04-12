@@ -18,7 +18,7 @@ class CUSTOM {
     this.conns = {
       'mysql': 'com.mysql.jdbc.Driver\r\njdbc:mysql://localhost/test?user=root&password=123456',
       'sqlserver': 'com.microsoft.sqlserver.jdbc.SQLServerDriver\r\njdbc:sqlserver://127.0.0.1:1433;databaseName=test;user=sa;password=123456',
-      'oracle': 'oracle.jdbc.driver.OracleDriver\r\njdbc:oracle:thin:user/password@127.0.0.1:1521/test',
+      'oracle': 'oracle.jdbc.driver.OracleDriver\r\njdbc:oracle:thin:@127.0.0.1:1521/test\r\nuser\r\npassword',
     };
     // 1. 初始化TREE UI
     this.tree = this.manager.list.layout.attachTree();
@@ -164,6 +164,13 @@ class CUSTOM {
       type: 'button',
       icon: 'remove',
       text: LANG['form']['toolbar']['clear']
+    }, {
+      type: 'separator'
+    }, {
+      id: 'test',
+      type: 'button',
+      icon: 'spinner',
+      text: LANG['form']['toolbar']['test']
     }]);
 
     // form
@@ -221,6 +228,32 @@ class CUSTOM {
             this.manager.list.imgs[0]
           );
           break;
+        case 'test':
+          if (!form.validate()) {
+            return toastr.warning(LANG['form']['warning'], LANG_T['warning']);
+          };
+          // 解析数据
+          let _data = form.getValues();
+          win.progressOn();
+          this.core.request(
+            this.core[`database_${_data['type']}`].show_databases({
+              conn: _data['conn']
+            })
+          ).then((res) => {
+            if(res['text'].length > 0){
+              if(res['text'].indexOf("ERROR://") > -1) {
+                throw res["text"];
+              }
+              toastr.success(LANG['form']['test_success'], LANG_T['success']);
+            }else{
+              toastr.warning(LANG['form']['test_warning'], LANG_T['warning']);
+            }
+            win.progressOff();
+          }).catch((err)=>{
+            win.progressOff();
+            toastr.error(JSON.stringify(err), LANG_T['error']);
+          });
+          break;
       }
     });
   }
@@ -255,6 +288,13 @@ class CUSTOM {
       type: 'button',
       icon: 'remove',
       text: LANG['form']['toolbar']['clear']
+    }, {
+      type: 'separator'
+    }, {
+      id: 'test',
+      type: 'button',
+      icon: 'spinner',
+      text: LANG['form']['toolbar']['test']
     }]);
 
     // form
@@ -306,6 +346,32 @@ class CUSTOM {
           toastr.success(LANG['form']['success'], LANG_T['success']);
           // 刷新 UI
           this.parse();
+          break;
+        case 'test':
+          if (!form.validate()) {
+            return toastr.warning(LANG['form']['warning'], LANG_T['warning']);
+          };
+          // 解析数据
+          let _data = form.getValues();
+          win.progressOn();
+          this.core.request(
+            this.core[`database_${_data['type']}`].show_databases({
+              conn: _data['conn']
+            })
+          ).then((res) => {
+            if(res['text'].length > 0){
+              if(res['text'].indexOf("ERROR://") > -1) {
+                throw res["text"];
+              }
+              toastr.success(LANG['form']['test_success'], LANG_T['success']);
+            }else{
+              toastr.warning(LANG['form']['test_warning'], LANG_T['warning']);
+            }
+            win.progressOff();
+          }).catch((err)=>{
+            win.progressOff();
+            toastr.error(JSON.stringify(err), LANG_T['error']);
+          });
           break;
       }
     });
@@ -525,8 +591,10 @@ class CUSTOM {
     const grid = this.manager.result.layout.attachGrid();
     grid.clearAll();
     grid.setHeader(header_arr.join(',').replace(/,$/, ''));
+    grid.setColTypes("txt,".repeat(header_arr.length).replace(/,$/,''));
     grid.setColSorting(('str,'.repeat(header_arr.length)).replace(/,$/, ''));
-    grid.setInitWidths('*');
+    grid.setColumnMinWidth(100, header_arr.length-1);
+    grid.setInitWidths(("100,".repeat(header_arr.length-1)) + "*");
     grid.setEditable(true);
     grid.init();
     // 添加数据
@@ -541,13 +609,32 @@ class CUSTOM {
       'rows': grid_data
     }, 'json');
     // 启用导出按钮
-    // this.manager.result.toolbar[grid_data.length > 0 ? 'enableItem' : 'disableItem']('dump');
+    this.manager.result.toolbar[grid_data.length > 0 ? 'enableItem' : 'disableItem']('dump');
+  }
+
+  // 导出查询数据
+  dumpResult() {
+    const grid = this.manager.result.layout.getAttachedObject();
+    let filename = `${this.core.__opts__.ip}_${new Date().format("yyyyMMddhhmmss")}.csv`;
+    antSword['test'] = this;
+    dialog.showSaveDialog({
+      title: LANG['result']['dump']['title'],
+      defaultPath: filename
+    },(filePath) => {
+      if (!filePath) { return; };
+      let headerStr = grid.hdrLabels.join(',');
+      let dataStr = grid.serializeToCSV();
+      let tempDataBuffer = new Buffer(headerStr+'\n'+dataStr);
+      fs.writeFileSync(filePath, tempDataBuffer);
+      toastr.success(LANG['result']['dump']['success'], LANG_T['success']);
+    });
   }
 
   // 禁用toolbar按钮
   disableToolbar() {
     this.manager.list.toolbar.disableItem('del');
     this.manager.list.toolbar.disableItem('edit');
+    this.manager.result.toolbar.disableItem('dump');
   }
 
   // 启用toolbar按钮
