@@ -133,11 +133,11 @@ class Terminal {
     this.path = infoPath;
 
     // 组合banner
-    banner += `\n[[b;#99A50D;]${LANG['banner']['path']}]: [[;#C3C3C3;]${infoPath}]`;
-    banner += `\n[[b;#99A50D;]${LANG['banner']['drive']}]: [[;#C3C3C3;]${infoDrive}]`;
+    banner += `\n[[b;#99A50D;]${LANG['banner']['path']}]: [[;#C3C3C3;]${antSword.noxss(infoPath)}]`;
+    banner += `\n[[b;#99A50D;]${LANG['banner']['drive']}]: [[;#C3C3C3;]${antSword.noxss(infoDrive)}]`;
     if (info.length === 4) {
-      banner += `\n[[b;#99A50D;]${LANG['banner']['system']}]: [[;#C3C3C3;]${infoSystem}]`;
-      banner += `\n[[b;#99A50D;]${LANG['banner']['user']}]: [[;#C3C3C3;]${infoUser}]`;
+      banner += `\n[[b;#99A50D;]${LANG['banner']['system']}]: [[;#C3C3C3;]${antSword.noxss(infoSystem)}]`;
+      banner += `\n[[b;#99A50D;]${LANG['banner']['user']}]: [[;#C3C3C3;]${antSword.noxss(infoUser)}]`;
     }
 
     // 初始化终端
@@ -204,7 +204,7 @@ class Terminal {
         var sessbin = cmd.substr(5).trim();
         if(sessbin.length>0){
           self.sessbin = sessbin;
-          term.echo(LANG['ascmd']['ascmd'](self.sessbin));
+          term.echo(LANG['ascmd']['ascmd'](antSword.noxss(self.sessbin)));
         }else{
           term.echo(LANG['ascmd']['ashelp']);
         }
